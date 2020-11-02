@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<simplerdbms:Schema xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:simplerdbms="SimpleRDBMS" xsi:schemaLocation="SimpleRDBMS ../metamodel/SimpleRDBMS.ecore">
+  <tables name="Persona">
+    <columns name="dni" type="VARCHAR(100)"/>
+    <columns name="apellido" type="VARCHAR(100)"/>
+    <columns name="direccion" type="VARCHAR(100)"/>
+    <columns name="nombre" type="VARCHAR(100)"/>
+  </tables>
+  <tables name="Cliente">
+    <columns name="cuit" type="INTEGER"/>
+    <columns name="nro_cliente" type="INTEGER"/>
+    <columns name="PersonaClientedni" type="VARCHAR(100)"/>
+  </tables>
+  <tables name="Chofer">
+    <columns name="salario" type="REAL"/>
+    <columns name="nro_chofer" type="INTEGER"/>
+    <columns name="PersonaChoferdni" type="VARCHAR(100)"/>
+  </tables>
+  <tables name="HojaDeRuta">
+    <columns name="fecha" type="DATETIME"/>
+    <columns name="monto_total" type="REAL"/>
+    <columns name="monto_cobrado" type="REAL"/>
+    <columns name="monto_caja" type="REAL"/>
+    <columns name="nro" type="INTEGER"/>
+  </tables>
+  <tables name="Gasto">
+    <columns name="codigo" type="INTEGER"/>
+    <columns name="descripcion" type="VARCHAR(100)"/>
+  </tables>
+</simplerdbms:Schema>

@@ -1,0 +1,159 @@
+modeltype ER uses 'ER';
+modeltype RDB uses 'SimpleRDBMS';
+
+transformation ER_To_SimpleRDBMS(in er : ER, out RDB);
+
+main(){
+	er.rootObjects()[ER::ERDiagram]->map erDiagram2Schema();
+}
+
+mapping ER::ERDiagram::erDiagram2Schema() : RDB::Schema {
+	name := self.name;
+	tables := self.relatableelements[ER::Entity]->select(e | e.mustBeTabulated())-> map entities2Tables();
+}
+
+mapping ER::Entity::entities2Tables() : RDB::Table { 
+	name := self.name; 
+	columns := (self.getAttrs()->reject(a | a.isMultiValued)-> map attrs2Columns())->union(self.getParentAttrs()->reject(a | a.isMultiValued)-> map inheritedAttrs2Columns(self));
+	keys := (self.keys->union(self.getPK()))-> map keys2TableKeys(self);
+	if (self.hasParent()) then {
+		foreignKeys := self.getPK()-> map addPKForeignKeys(self);
+	}
+	endif;		
+}
+
+mapping ER::Attribute::multivaluedAttrs2Tables() : RDB::Table {
+	name := self.name+self.owner.name;
+	//columns := self.oclAsSet()->union(self.owner.getPKAttrs())-> map attrs2Columns(self.owner);		
+}
+
+
+mapping ER::Attribute::inheritedAttrs2Columns(in callerEntity: ER::Entity) : RDB::Column {
+	name := self.name+'_'+(callerEntity.name.toLower());
+	type := self.getSqlType();
+}
+
+mapping ER::Attribute::attrs2Columns() : RDB::Column {
+	name := self.name;	
+	type := self.getSqlType();
+}
+
+mapping ER::Key::keys2TableKeys(in callerEntity : ER::Entity) : RDB::Key {
+	if (self.oclIsTypeOf(ER::PrimaryKey)) then {
+		name := 'PK'+callerEntity.name;
+	}
+	else{
+		name := self.name;
+	}
+	endif;
+	isPrimaryKey := self.oclIsTypeOf(ER::PrimaryKey);
+	columns := self.key_attributes-> map attrs2Columns();
+}
+
+
+mapping ER::Relation::tabulate1toNRelations() : RDB::Table {
+	name := self.destination.name;
+	columns := self.source.oclAsType(ER::Entity).getPKAttrs()		
+}
+
+mapping ER::PrimaryKey::addPKForeignKeys(in callerEntity : ER::Entity) : RDB::ForeignKey {
+	if (self.key_owner <> callerEntity) then {
+		name := 'FK'+self.key_owner.name;
+		refersTo := self.oclAsType(ER::Key).map keys2TableKeys(self.key_owner);
+	}
+	endif;	
+}
+
+query ER::Attribute::getSqlType() : String {
+	if (self.type = ER::Type::String) then {
+		return 'VARCHAR(100)';	
+	}
+	else {
+		if (self.type = ER::Type::Integer) then {
+			return 'INTEGER';	
+		}
+		else{
+			if (self.type = ER::Type::Real) then {
+				return 'REAL';	
+			}
+			else{
+				return 'DATETIME';
+			}
+			endif;
+		}
+		endif;
+	}
+	endif;
+}
+
+query ER::Entity::hasChilds() : Boolean {
+	return self.childs->size() > 0;
+}
+
+//pre-condicion: debe tener padre
+query ER::Entity::getParent() : ER::Entity {
+	return self.parents->any(true);
+}
+
+query ER::Entity::mustBeTabulated() : Boolean {
+	return (not self.hasChilds())  or (self.hasChilds() and (self.allowOverlappingChilds or (self.sourceOpposite->size() > 0 or self.destOpposite->size() > 0)));
+}
+
+query ER::Entity::hasParent() : Boolean {
+	return self.parents->size() > 0;
+}
+
+query ER::Entity::hasPK() : Boolean {
+	return self.primarykey -> size() > 0;
+}
+
+query ER::Entity::getAttrs() : Set(ER::Attribute) {
+	return self.attributes;
+}
+
+query ER::Entity::getPKAttrs() : Set(ER::Attribute) {
+	if (not self.hasPK()) then {
+		return Set{};	
+	}
+	else {
+		return self.primarykey->any(true).key_attributes;
+	}
+	endif;
+}
+
+//Pre-condicion: Debe ser necesario crear la tabla correspondiente a la entidad
+query ER::Entity::getParentAttrs() : Set(ER::Attribute) {
+	if (not self.hasParent()) then {
+		return Set{};
+	}
+	else {
+		if (self.getParent().mustBeTabulated()) then {
+			return self.getParent().getPKAttrs()->union(self.getParent().getParentAttrs());
+		}
+		else {
+			return self.getParent().getAttrs()->union(self.getParent().getParentAttrs());
+		}
+		endif;
+	}
+	endif;
+}
+
+query ER::Entity::getPK() : Set(ER::PrimaryKey) {
+	if (not self.hasParent()) then {
+		return self.primarykey->asSet();
+	}
+	else {
+		var parent := self.getParent();
+		if (parent.mustBeTabulated()) then {
+			return parent.getPK();	
+		}
+		else {
+			return parent.getPK();
+		}
+		endif;
+	}
+	endif;
+	return null;
+}
+
+

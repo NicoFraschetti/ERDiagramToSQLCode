@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="ERModel" nsURI="ER" nsPrefix="ERModel">
+  <eAnnotations source="http://www.eclipse.org/OCL/Import">
+    <details key="ecore" value="http://www.eclipse.org/emf/2002/Ecore"/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+    <details key="invocationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="settingDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="validationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EClass" name="ERElement">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Type">
+    <eLiterals name="String"/>
+    <eLiterals name="Integer" value="1"/>
+    <eLiterals name="Real" value="2"/>
+    <eLiterals name="DateTime" value="3"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Entity" eSuperTypes="#//RelatableElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="keyNamesCannotBeRepeated keyAttrMustBelongToEntity keysMustHaveDifferentAttrs entityCannotBeChildOfItself inheritanceCannotBeCyclic uninheritedEntitiesMustHavePK attrNamesMustBeUniqueWithinAnEntity"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="keyNamesCannotBeRepeated" value="&#xA;&#x9;&#x9;&#x9;self.keys->asSet()->union(self.primarykey->asSet())->forAll(k1,k2 | k1.name = k2.name implies k1 = k2)"/>
+      <details key="keyAttrMustBelongToEntity" value="&#xA;&#x9;&#x9;&#x9;self.keys->asSet()->union(self.primarykey->asSet())->forAll(k | k.key_attributes->forAll(a | self.attributes->includes(a)))"/>
+      <details key="keysMustHaveDifferentAttrs" value="&#xA;&#x9;&#x9;&#x9;self.keys->asSet()->union(self.primarykey->asSet())->forAll(k1,k2 | k1.key_attributes = k2.key_attributes implies k1 = k2)"/>
+      <details key="entityCannotBeChildOfItself" value="&#xA;&#x9;&#x9;&#x9;self.childs->excludes(self)"/>
+      <details key="inheritanceCannotBeCyclic" value="&#xA;&#x9;&#x9;&#x9;not(self.childs->closure(c | c.childs)->includes(self))"/>
+      <details key="uninheritedEntitiesMustHavePK" value="&#xA;&#x9;&#x9;&#x9;self.parents->size() = 0 implies self.primarykey->size() = 1"/>
+      <details key="attrNamesMustBeUniqueWithinAnEntity" value="&#xA;&#x9;&#x9;&#x9;self.attributes->forAll(a1,a2 | a1.name = a2.name implies a1 = a2)"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="primarykey" eType="#//PrimaryKey"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="childs" upperBound="-1"
+        eType="#//Entity" eOpposite="#//Entity/parents"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parents" eType="#//Entity"
+        eOpposite="#//Entity/childs"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="allowOverlappingChilds"
+        lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="keys" upperBound="-1" eType="#//NonPrimaryKey"
+        containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Attribute" eSuperTypes="#//ERElement">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" eType="#//Type"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="isMultiValued" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="owner" lowerBound="1" eType="#//RelatableElement"
+        eOpposite="#//RelatableElement/attributes"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Key" eSuperTypes="#//ERElement">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="key_attributes" lowerBound="1"
+        upperBound="-1" eType="#//Attribute"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="key_owner" lowerBound="1"
+        eType="#//Entity"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Relation" eSuperTypes="#//RelatableElement">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
+        eType="#//RelatableElement" eOpposite="#//RelatableElement/sourceOpposite"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="destination" lowerBound="1"
+        eType="#//RelatableElement" eOpposite="#//RelatableElement/destOpposite"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="srcUpperBound" lowerBound="1"
+        eType="#//CardinalBounds"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="destUpperBound" lowerBound="1"
+        eType="#//CardinalBounds"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="PrimaryKey" eSuperTypes="#//Key"/>
+  <eClassifiers xsi:type="ecore:EClass" name="RelatableElement" eSuperTypes="#//ERElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="uniqueName"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="uniqueName" value="&#xA;&#x9;&#x9;&#x9;RelatableElement.allInstances()->forAll(e1,e2 | e1.name = e2.name implies e1 = e2)"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="sourceOpposite" upperBound="-1"
+        eType="#//Relation" eOpposite="#//Relation/source"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="destOpposite" upperBound="-1"
+        eType="#//Relation" eOpposite="#//Relation/destination"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="attributes" upperBound="-1"
+        eType="#//Attribute" containment="true" eOpposite="#//Attribute/owner"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ERDiagram" eSuperTypes="#//ERElement">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="relatableelements" upperBound="-1"
+        eType="#//RelatableElement" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="CardinalBounds">
+    <eLiterals name="uno" literal="1"/>
+    <eLiterals name="N" value="1" literal="N"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="NonPrimaryKey" eSuperTypes="#//Key"/>
+</ecore:EPackage>
