@@ -9,7 +9,7 @@ main(){
 
 mapping ER::ERDiagram::erDiagram2Schema() : RDB::Schema {
 	name := self.name;
-	tables := self.relatableelements[ER::Entity]->select(e | e.mustBeTabulated())-> map entities2Tables();
+	tables := self.relatableelements[ER::Entity]->select(e | e.mustBeTabulated())-> map entities2Tables()->union(self.relatableelements[ER::Relation]->select(r | r.isNToN()) -> map nToNRelations2Tables());
 }
 
 mapping ER::Entity::entities2Tables() : RDB::Table { 
@@ -36,35 +36,39 @@ mapping ER::Entity::entities2Tables() : RDB::Table {
 
 mapping ER::Relation::nToNRelations2Tables() : RDB::Table {
 	name := self.name;
+	columns := self.attributes-> map attrs2Columns()->asBag()
+	->union(self.source.getRelatableElementPK().key_attributes -> map relationOppositeAttrs2Columns(self,self.source)->asBag())
+	->union(self.destination.getRelatableElementPK().key_attributes -> map relationOppositeAttrs2Columns(self,self.destination)->asBag());
+	keys := self. map getRelationTableKey();
+	foreignKeys := self.source.getRelatableElementPK(). map relationOppositePK2ForeignKeys(self,self.source)
+	->union(self.destination.getRelatableElementPK(). map relationOppositePK2ForeignKeys(self,self.destination)); 
 }
 
-mapping ER::PrimaryKey::relationOppositePK2ForeignKeys(in callerEntity : ER::Entity ,in relOpposite : ER::RelatableElement) : RDB::ForeignKey {
+mapping ER::PrimaryKey::relationOppositePK2ForeignKeys(in callerEntity : ER::RelatableElement ,in relOpposite : ER::RelatableElement) : RDB::ForeignKey {
 	name := 'FK'+relOpposite.getTopTabulatedElement().name+callerEntity.name;
 	var topElement : ER::RelatableElement;
 	topElement := relOpposite.getTopTabulatedElement();
 	if (topElement.isEntity()) then {
 		var entity : ER::Entity;
 		entity := topElement.oclAsType(ER::Entity);
-		owner := entity. map entities2Tables();
+		//owner := entity. map entities2Tables();
 		refersTo := entity.getPK()->any(true).oclAsType(ER::Key). map keys2TableKeys(entity);
 	}
 	else {
 		var r : ER::Relation;
-		r := self.oclAsType(ER::Relation);
-		owner := r. map nToNRelations2Tables();
+		r := relOpposite.oclAsType(ER::Relation);
+		refersTo := r. map getRelationTableKey();
+		//owner := r. map nToNRelations2Tables();
 	}
 	endif;
 	columns := self.key_attributes -> map relationOppositeAttrs2Columns(callerEntity,relOpposite); 
 }
 
-mapping ER::Attribute::relationOppositeAttrs2Columns(in callerEntity : ER::Entity ,in relOpposite : ER::RelatableElement ) : RDB::Column {
-//	if (relOpposite.isEntity()) then {
-//		name := self.name+'_'+relOpposite.name+'_'+callerEntity.name;
-//	}
-//	else {
-//		var opposite : ER::RelatableElement;
-//	}
-//	endif;
+mapping ER::Relation::getRelationTableForeignKeys() : Set(RDB::ForeignKey) {
+	
+}
+
+mapping ER::Attribute::relationOppositeAttrs2Columns(in callerEntity : ER::RelatableElement ,in relOpposite : ER::RelatableElement ) : RDB::Column {
 	name := self.name+'_'+relOpposite.getTopTabulatedElement().name.toLowerCase()+'_'+callerEntity.name.toLowerCase();
 	type := self.getSqlType();
 }
@@ -97,6 +101,13 @@ mapping ER::Key::keys2TableKeys(in callerEntity : ER::Entity) : RDB::Key {
 		columns := self.key_attributes-> map attrs2Columns();
 	}
 	endif;
+}
+
+mapping ER::Relation::getRelationTableKey() : RDB::Key {
+	name :='PK'+self.name;
+	isPrimaryKey := true;
+	columns := self.source.getRelatableElementPK().key_attributes -> map relationOppositeAttrs2Columns(self,self.source)->asBag()
+	->union(self.destination.getRelatableElementPK().key_attributes -> map relationOppositeAttrs2Columns(self,self.destination)->asBag());
 }
 
 mapping ER::PrimaryKey::addPKForeignKeys(in callerEntity : ER::Entity) : RDB::ForeignKey {
