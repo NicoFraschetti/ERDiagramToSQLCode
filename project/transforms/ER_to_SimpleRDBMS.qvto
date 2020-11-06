@@ -14,22 +14,63 @@ mapping ER::ERDiagram::erDiagram2Schema() : RDB::Schema {
 
 mapping ER::Entity::entities2Tables() : RDB::Table { 
 	name := self.name; 
-	columns := (self.getAttrs()->reject(a | a.isMultiValued)-> map attrs2Columns())->union(self.getParentAttrs()->reject(a | a.isMultiValued)-> map inheritedAttrs2Columns(self));
+	columns := (self.getAttrs()->reject(a | a.isMultiValued)-> map attrs2Columns())
+	->union(self.getParentAttrs()->reject(a | a.isMultiValued)-> map inheritedAttrs2Columns(self))
+	->union(self.getRelationsFromEntityAsSource()
+	->collect(r | r.destination.getRelatableElementPK().key_attributes -> map relationOppositeAttrs2Columns(self,r.destination)))
+	->union(self.getRelationsFromEntityAsDest()
+	->collect(r | r.source.getRelatableElementPK().key_attributes -> map relationOppositeAttrs2Columns(self,r.source)))
+	->union(self.getRelationsFromEntityAsSource()->union(self.getRelationsFromEntityAsDest())
+	->collect(r | r.attributes)-> map attrs2Columns());
 	keys := (self.keys->union(self.getPK()))-> map keys2TableKeys(self);
-	if (self.hasParent()) then {
-		foreignKeys := self.getPK()-> map addPKForeignKeys(self);
+	var fkByInheritance : Bag(RDB::ForeignKey);
+	if (self.someAncestorMustBeTabulated()) then {
+		fkByInheritance := self.getPK()-> map addPKForeignKeys(self);
 	}
-	endif;		
+	endif;
+	foreignKeys := fkByInheritance->union(self.getRelationsFromEntityAsSource()
+	->collect(r | r.destination.getRelatableElementPK() -> map relationOppositePK2ForeignKeys(self,r.destination)))
+	->union(self.getRelationsFromEntityAsDest()
+	->collect(r | r.source.getRelatableElementPK() -> map relationOppositePK2ForeignKeys(self,r.source)));		
 }
 
-mapping ER::Attribute::multivaluedAttrs2Tables() : RDB::Table {
-	name := self.name+self.owner.name;
-	//columns := self.oclAsSet()->union(self.owner.getPKAttrs())-> map attrs2Columns(self.owner);		
+mapping ER::Relation::nToNRelations2Tables() : RDB::Table {
+	name := self.name;
 }
 
+mapping ER::PrimaryKey::relationOppositePK2ForeignKeys(in callerEntity : ER::Entity ,in relOpposite : ER::RelatableElement) : RDB::ForeignKey {
+	name := 'FK'+relOpposite.getTopTabulatedElement().name+callerEntity.name;
+	var topElement : ER::RelatableElement;
+	topElement := relOpposite.getTopTabulatedElement();
+	if (topElement.isEntity()) then {
+		var entity : ER::Entity;
+		entity := topElement.oclAsType(ER::Entity);
+		owner := entity. map entities2Tables();
+		refersTo := entity.getPK()->any(true).oclAsType(ER::Key). map keys2TableKeys(entity);
+	}
+	else {
+		var r : ER::Relation;
+		r := self.oclAsType(ER::Relation);
+		owner := r. map nToNRelations2Tables();
+	}
+	endif;
+	columns := self.key_attributes -> map relationOppositeAttrs2Columns(callerEntity,relOpposite); 
+}
+
+mapping ER::Attribute::relationOppositeAttrs2Columns(in callerEntity : ER::Entity ,in relOpposite : ER::RelatableElement ) : RDB::Column {
+//	if (relOpposite.isEntity()) then {
+//		name := self.name+'_'+relOpposite.name+'_'+callerEntity.name;
+//	}
+//	else {
+//		var opposite : ER::RelatableElement;
+//	}
+//	endif;
+	name := self.name+'_'+relOpposite.getTopTabulatedElement().name.toLowerCase()+'_'+callerEntity.name.toLowerCase();
+	type := self.getSqlType();
+}
 
 mapping ER::Attribute::inheritedAttrs2Columns(in callerEntity: ER::Entity) : RDB::Column {
-	name := self.name+'_'+(callerEntity.name.toLower());
+	name := self.name+'_'+(callerEntity.name.toLowerCase());
 	type := self.getSqlType();
 }
 
@@ -41,27 +82,27 @@ mapping ER::Attribute::attrs2Columns() : RDB::Column {
 mapping ER::Key::keys2TableKeys(in callerEntity : ER::Entity) : RDB::Key {
 	if (self.oclIsTypeOf(ER::PrimaryKey)) then {
 		name := 'PK'+callerEntity.name;
+		isPrimaryKey := true;
+		if (callerEntity.hasParent()) then {
+			columns := self.key_attributes-> map inheritedAttrs2Columns(callerEntity);
+		}
+		else {
+			columns := self.key_attributes-> map attrs2Columns();
+		}
+		endif;
 	}
 	else{
 		name := self.name;
+		isPrimaryKey := false;
+		columns := self.key_attributes-> map attrs2Columns();
 	}
 	endif;
-	isPrimaryKey := self.oclIsTypeOf(ER::PrimaryKey);
-	columns := self.key_attributes-> map attrs2Columns();
-}
-
-
-mapping ER::Relation::tabulate1toNRelations() : RDB::Table {
-	name := self.destination.name;
-	columns := self.source.oclAsType(ER::Entity).getPKAttrs()		
 }
 
 mapping ER::PrimaryKey::addPKForeignKeys(in callerEntity : ER::Entity) : RDB::ForeignKey {
-	if (self.key_owner <> callerEntity) then {
-		name := 'FK'+self.key_owner.name;
-		refersTo := self.oclAsType(ER::Key).map keys2TableKeys(self.key_owner);
-	}
-	endif;	
+	name := 'FK'+self.key_owner.name;
+	columns := callerEntity.getPK().key_attributes -> map inheritedAttrs2Columns(callerEntity);
+	refersTo := self.oclAsType(ER::Key).map keys2TableKeys(self.key_owner);
 }
 
 query ER::Attribute::getSqlType() : String {
@@ -143,17 +184,96 @@ query ER::Entity::getPK() : Set(ER::PrimaryKey) {
 		return self.primarykey->asSet();
 	}
 	else {
-		var parent := self.getParent();
-		if (parent.mustBeTabulated()) then {
-			return parent.getPK();	
+		return self.getParent().getPK();
+	}
+	endif;
+}
+
+query ER::Entity::someAncestorMustBeTabulated() : Boolean {
+	return self->closure(p | p.parents)->exists(e | e.mustBeTabulated());
+}
+
+// Para evitar el pasaje de columnas para ambos lados, solo paso las columnas de pk de dest a source
+query ER::Relation::is1To1() : Boolean {
+	return self.srcUpperBound = CardinalBounds::uno and self.destUpperBound = CardinalBounds::uno;
+}
+
+query ER::Relation::is1ToN() : Boolean {
+	return self.srcUpperBound = CardinalBounds::uno and self.destUpperBound = CardinalBounds::N;
+}
+
+query ER::Relation::isNTo1() : Boolean {
+	return self.srcUpperBound = CardinalBounds::N and self.destUpperBound = CardinalBounds::uno;
+}
+
+query ER::Relation::isNToN() : Boolean {
+	return self.srcUpperBound = CardinalBounds::N and self.destUpperBound = CardinalBounds::N;
+}
+
+query ER::RelatableElement::getRelatableElementPK() : Set(ER::PrimaryKey) {
+	if (self.oclIsTypeOf(ER::Entity)) then {
+		return self.oclAsType(ER::Entity).getPK();
+	}
+	else {
+		var relation : ER::Relation;
+		relation := self.oclAsType(ER::Relation);
+		if (relation.is1ToN()) {
+			return relation.destination.getRelatableElementPK();
 		}
 		else {
-			return parent.getPK();
+			if (relation.isNTo1()) then {
+				return relation.source.getRelatableElementPK();
+			}
+			else {
+				if (relation.isNToN()) then {
+					return relation.destination.getRelatableElementPK()->union(relation.source.getRelatableElementPK());	
+				}
+				else {
+					return relation.source.getRelatableElementPK();	
+				}
+				endif;				
+			}
+			endif;
 		}
 		endif;
 	}
 	endif;
-	return null;
+	return null;	
 }
 
+query ER::Entity::getRelationsFromEntityAsSource() : Set(ER::Relation) {
+	return self.sourceOpposite->select(r | r.isNTo1() or r.is1To1());	
+}
 
+query ER::Entity::getRelationsFromEntityAsDest() : Set(ER::Relation) {
+	return self.destOpposite->select(r | r.is1ToN());	
+}
+
+query ER::RelatableElement::isEntity() : Boolean {
+	return self.oclIsTypeOf(ER::Entity);
+}
+
+query ER::RelatableElement::getTopTabulatedElement() : ER::RelatableElement {
+	if (self.isEntity()) then {
+		return self;
+	}
+	else {
+		var r : ER::Relation;
+		r := self.oclAsType(ER::Relation);
+		if (r.isNToN()) then {
+			return self;
+		}
+		else {
+			if (r.isNTo1() or r.is1To1()) then {
+				return r.source.getTopTabulatedElement();
+			}
+			else {
+				return r.destination.getTopTabulatedElement();
+			}
+			endif;
+		}
+		endif;
+	}
+	endif;
+	return null;	
+}
