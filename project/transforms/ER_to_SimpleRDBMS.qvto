@@ -28,10 +28,24 @@ mapping ER::Entity::entities2Tables() : RDB::Table {
 		fkByInheritance := self.getPK()-> map addPKForeignKeys(self);
 	}
 	endif;
-	foreignKeys := fkByInheritance->union(self.getRelationsFromEntityAsSource()
-	->collect(r | r.destination.getRelatableElementPK() -> map relationOppositePK2ForeignKeys(self,r.destination)))
-	->union(self.getRelationsFromEntityAsDest()
-	->collect(r | r.source.getRelatableElementPK() -> map relationOppositePK2ForeignKeys(self,r.source)));		
+	var reWithOnePK : Bag(ER::RelatableElement);
+	var reWithMore : Bag(ER::RelatableElement);
+	reWithOnePK := self.getRelationsFromEntityAsSource()->collect(r | r.destination.getTopTabulatedElement())
+	->select(re | not re.isRelationAndNToN())
+	->union(self.getRelationsFromEntityAsDest()->collect(r | r.source.getTopTabulatedElement())
+	->select(re | not re.isRelationAndNToN()));
+	reWithMore := self.getRelationsFromEntityAsSource()->collect(r | r.destination.getTopTabulatedElement())
+	->select(re | re.isRelationAndNToN())
+	->union(self.getRelationsFromEntityAsDest()->collect(r | r.source.getTopTabulatedElement())
+	->select(re | re.isRelationAndNToN()));
+	var fkByRelations : Bag(RDB::ForeignKey);
+	fkByRelations := reWithOnePK->collect(re | re.getRelatableElementPK(). map relationOppositePK2ForeignKeys(self,re))
+	->union(reWithMore->collect(re | re.getRelatableElementPK()-> map nToNrelationOppositePK2ForeignKeys(self,re)));
+	foreignKeys := fkByInheritance->union(fkByRelations);
+//	foreignKeys := fkByInheritance->union(self.getRelationsFromEntityAsSource()
+//	->collect(r | r.destination.getRelatableElementPK(). map relationOppositePK2ForeignKeys(self,r.destination)))
+//	->union(self.getRelationsFromEntityAsDest()
+//	->collect(r | r.source.getRelatableElementPK(). map relationOppositePK2ForeignKeys(self,r.source)));		
 }
 
 mapping ER::Relation::nToNRelations2Tables() : RDB::Table {
@@ -40,8 +54,47 @@ mapping ER::Relation::nToNRelations2Tables() : RDB::Table {
 	->union(self.source.getRelatableElementPK().key_attributes -> map relationOppositeAttrs2Columns(self,self.source)->asBag())
 	->union(self.destination.getRelatableElementPK().key_attributes -> map relationOppositeAttrs2Columns(self,self.destination)->asBag());
 	keys := self. map getRelationTableKey();
-	foreignKeys := self.source.getRelatableElementPK(). map relationOppositePK2ForeignKeys(self,self.source)
-	->union(self.destination.getRelatableElementPK(). map relationOppositePK2ForeignKeys(self,self.destination)); 
+//	reWithOnePK := self.getRelationsFromEntityAsSource()->collect(r | r.destination.getTopTabulatedElement())
+//	->select(re | not re.isRelationAndNToN())
+	var fkByRelations : Bag(RDB::ForeignKey);
+	var topSourceElement : ER::RelatableElement;
+	var topDestElement : ER::RelatableElement;
+	topSourceElement := self.source.getTopTabulatedElement();
+	topDestElement := self.destination.getTopTabulatedElement();
+	if (not topSourceElement.isRelationAndNToN() and not topDestElement.isRelationAndNToN()) then {
+		foreignKeys := topSourceElement.getRelatableElementPK(). map relationOppositePK2ForeignKeys(self,topSourceElement)
+		->union(topDestElement.getRelatableElementPK(). map relationOppositePK2ForeignKeys(self,topDestElement));
+	}
+	else {
+		if (topSourceElement.isRelationAndNToN() and topDestElement.isRelationAndNToN()) then {
+			foreignKeys := topSourceElement.getRelatableElementPK()-> map nToNrelationOppositePK2ForeignKeys(self,topSourceElement)->asBag()
+			->union(topDestElement.getRelatableElementPK()-> map nToNrelationOppositePK2ForeignKeys(self,topDestElement)->asBag());
+		}
+		else {
+			if (topSourceElement.isRelationAndNToN()) {
+				foreignKeys := topSourceElement.getRelatableElementPK()-> map nToNrelationOppositePK2ForeignKeys(self,topSourceElement)->asBag()
+				->union(topDestElement.getRelatableElementPK(). map relationOppositePK2ForeignKeys(self,topDestElement));
+			}
+			else {
+				foreignKeys := topSourceElement.getRelatableElementPK(). map relationOppositePK2ForeignKeys(self,topSourceElement)->asBag()
+				->union(topDestElement.getRelatableElementPK()-> map nToNrelationOppositePK2ForeignKeys(self,topDestElement)->asBag());
+			}
+			endif;
+		}
+		endif;
+	}
+	endif; 
+}
+
+//mapping Set(ER::PrimaryKey)::nToNrelationOppositePK2ForeignKeys(in ntnRel : ER::RelatableElement) : ER::PrimaryKey {
+//	name := 'PK'+ntnRel.name;
+//	key_attributes := self->collect(pk | pk.key_attributes);	
+//}
+
+mapping Set(ER::PrimaryKey)::nToNrelationOppositePK2ForeignKeys(in callerEntity : ER::RelatableElement ,in relOpposite : ER::RelatableElement) : RDB::ForeignKey {
+	name := 'FK'+relOpposite.getTopTabulatedElement().name+callerEntity.name;
+	refersTo := relOpposite.oclAsType(ER::Relation). map getRelationTableKey();  
+	columns := self->collect(pk | pk.key_attributes)-> map relationOppositeAttrs2Columns(callerEntity,relOpposite);	
 }
 
 mapping ER::PrimaryKey::relationOppositePK2ForeignKeys(in callerEntity : ER::RelatableElement ,in relOpposite : ER::RelatableElement) : RDB::ForeignKey {
@@ -61,11 +114,7 @@ mapping ER::PrimaryKey::relationOppositePK2ForeignKeys(in callerEntity : ER::Rel
 		//owner := r. map nToNRelations2Tables();
 	}
 	endif;
-	columns := self.key_attributes -> map relationOppositeAttrs2Columns(callerEntity,relOpposite); 
-}
-
-mapping ER::Relation::getRelationTableForeignKeys() : Set(RDB::ForeignKey) {
-	
+	columns := self.key_attributes-> map relationOppositeAttrs2Columns(callerEntity,relOpposite); 
 }
 
 mapping ER::Attribute::relationOppositeAttrs2Columns(in callerEntity : ER::RelatableElement ,in relOpposite : ER::RelatableElement ) : RDB::Column {
@@ -287,4 +336,12 @@ query ER::RelatableElement::getTopTabulatedElement() : ER::RelatableElement {
 	}
 	endif;
 	return null;	
+}
+
+query ER::RelatableElement::isRelationAndNToN() : Boolean {
+	if (self.isEntity()) then {
+		return false;
+	}
+	endif;
+	return self.oclAsType(ER::Relation).isNToN();	
 }
