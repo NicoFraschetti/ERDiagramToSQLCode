@@ -1,58 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<simplerdbms:Schema xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:simplerdbms="SimpleRDBMS" xsi:schemaLocation="SimpleRDBMS ../metamodel/SimpleRDBMS.ecore" name="CasoDeEstudio">
+<simplerdbms:Schema xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:simplerdbms="http://SimpleRDBMS" xsi:schemaLocation="http://SimpleRDBMS ../metamodel/SimpleRDBMS.ecore" name="CasoDeEstudio">
   <tables name="Persona">
-    <columns name="dni" type="VARCHAR(100)" keys="//@tables.0/@keys.0"/>
     <columns name="direccion" type="VARCHAR(100)"/>
     <columns name="apellido" type="VARCHAR(100)"/>
     <columns name="nombre" type="VARCHAR(100)"/>
-    <keys name="PKPersona" columns="//@tables.0/@columns.0" isPrimaryKey="true"/>
+    <columns name="dni" type="VARCHAR(100)" keys="//@tables.0/@keys.0"/>
+    <keys name="PKPersona" columns="//@tables.0/@columns.3" isPrimaryKey="true"/>
   </tables>
   <tables name="Cliente">
     <columns name="nro_cliente" type="INTEGER" keys="//@tables.1/@keys.1"/>
-    <columns name="dni_cliente" type="VARCHAR(100)" foreignKeys="//@tables.1/@foreignKeys.0" keys="//@tables.1/@keys.0"/>
-    <columns name="cuit" type="INTEGER" keys="//@tables.1/@keys.2"/>
-    <keys name="PKCliente" columns="//@tables.1/@columns.1" isPrimaryKey="true"/>
+    <columns name="cuit" type="INTEGER" keys="//@tables.1/@keys.0"/>
+    <columns name="dni_cliente" type="VARCHAR(100)" foreignKeys="//@tables.1/@foreignKeys.0" keys="//@tables.1/@keys.2"/>
+    <keys name="OtraClaveCliente" columns="//@tables.1/@columns.1"/>
     <keys name="SKCliente" columns="//@tables.1/@columns.0"/>
-    <keys name="OtraClaveCliente" columns="//@tables.1/@columns.2"/>
-    <foreignKeys name="FKPersona" refersTo="//@tables.0/@keys.0" columns="//@tables.1/@columns.1"/>
+    <keys name="PKCliente" columns="//@tables.1/@columns.2" isPrimaryKey="true"/>
+    <foreignKeys name="FKPersona" refersTo="//@tables.0/@keys.0" columns="//@tables.1/@columns.2"/>
   </tables>
   <tables name="Chofer">
+    <columns name="dni_chofer" type="VARCHAR(100)" foreignKeys="//@tables.2/@foreignKeys.0" keys="//@tables.2/@keys.1"/>
     <columns name="salario" type="REAL"/>
     <columns name="nro_chofer" type="INTEGER" keys="//@tables.2/@keys.0"/>
-    <columns name="dni_chofer" type="VARCHAR(100)" foreignKeys="//@tables.2/@foreignKeys.0" keys="//@tables.2/@keys.1"/>
-    <keys name="SKChofer" columns="//@tables.2/@columns.1"/>
-    <keys name="PKChofer" columns="//@tables.2/@columns.2" isPrimaryKey="true"/>
-    <foreignKeys name="FKPersona" refersTo="//@tables.0/@keys.0" columns="//@tables.2/@columns.2"/>
+    <keys name="SKChofer" columns="//@tables.2/@columns.2"/>
+    <keys name="PKChofer" columns="//@tables.2/@columns.0" isPrimaryKey="true"/>
+    <foreignKeys name="FKPersona" refersTo="//@tables.0/@keys.0" columns="//@tables.2/@columns.0"/>
   </tables>
   <tables name="HojaDeRuta">
-    <columns name="monto_caja" type="REAL"/>
-    <columns name="monto_cobrado" type="REAL"/>
-    <columns name="monto_total" type="REAL"/>
     <columns name="fecha" type="DATETIME"/>
+    <columns name="monto_cobrado" type="REAL"/>
     <columns name="nro" type="INTEGER" keys="//@tables.3/@keys.0"/>
-    <keys name="PKHojaDeRuta" columns="//@tables.3/@columns.4" isPrimaryKey="true"/>
+    <columns name="monto_caja" type="REAL"/>
+    <columns name="monto_total" type="REAL"/>
+    <keys name="PKHojaDeRuta" columns="//@tables.3/@columns.2" isPrimaryKey="true"/>
   </tables>
   <tables name="Gasto">
-    <columns name="dni_realizo_gasto" type="VARCHAR(100)" foreignKeys="//@tables.4/@foreignKeys.0"/>
+    <columns name="descripcion" type="VARCHAR(100)"/>
     <columns name="codigo" type="INTEGER" keys="//@tables.4/@keys.0"/>
     <columns name="nro_realizo_gasto" type="INTEGER" foreignKeys="//@tables.4/@foreignKeys.0"/>
-    <columns name="descripcion" type="VARCHAR(100)"/>
+    <columns name="dni_realizo_gasto" type="VARCHAR(100)" foreignKeys="//@tables.4/@foreignKeys.0"/>
     <keys name="PKGasto" columns="//@tables.4/@columns.1" isPrimaryKey="true"/>
-    <foreignKeys name="FKrealizoGasto" refersTo="//@tables.6/@keys.0" columns="//@tables.4/@columns.0 //@tables.4/@columns.2"/>
+    <foreignKeys name="FKrealizoGasto" refersTo="//@tables.6/@keys.0" columns="//@tables.4/@columns.2 //@tables.4/@columns.3"/>
   </tables>
   <tables name="Factura">
-    <columns name="dni_cliente_factura" type="VARCHAR(100)" foreignKeys="//@tables.5/@foreignKeys.0"/>
     <columns name="monto" type="REAL"/>
-    <columns name="fecha" type="DATETIME"/>
+    <columns name="dni_cliente_factura" type="VARCHAR(100)" foreignKeys="//@tables.5/@foreignKeys.0"/>
     <columns name="nro_factura" type="INTEGER" keys="//@tables.5/@keys.0"/>
-    <keys name="PKFactura" columns="//@tables.5/@columns.3" isPrimaryKey="true"/>
-    <foreignKeys name="FKClienteFactura" refersTo="//@tables.1/@keys.0" columns="//@tables.5/@columns.0"/>
+    <columns name="fecha" type="DATETIME"/>
+    <keys name="PKFactura" columns="//@tables.5/@columns.2" isPrimaryKey="true"/>
+    <foreignKeys name="FKClienteFactura" refersTo="//@tables.1/@keys.2" columns="//@tables.5/@columns.1"/>
   </tables>
   <tables name="realizo">
-    <columns name="nro_hojaderuta_realizo" type="INTEGER" foreignKeys="//@tables.6/@foreignKeys.0" keys="//@tables.6/@keys.0"/>
-    <columns name="dni_chofer_realizo" type="VARCHAR(100)" foreignKeys="//@tables.6/@foreignKeys.1" keys="//@tables.6/@keys.0"/>
+    <columns name="dni_chofer_realizo" type="VARCHAR(100)" foreignKeys="//@tables.6/@foreignKeys.0" keys="//@tables.6/@keys.0"/>
+    <columns name="nro_hojaderuta_realizo" type="INTEGER" foreignKeys="//@tables.6/@foreignKeys.1" keys="//@tables.6/@keys.0"/>
     <keys name="PKrealizo" columns="//@tables.6/@columns.0 //@tables.6/@columns.1" isPrimaryKey="true"/>
-    <foreignKeys name="FKHojaDeRutarealizo" refersTo="//@tables.3/@keys.0" columns="//@tables.6/@columns.0"/>
-    <foreignKeys name="FKChoferrealizo" refersTo="//@tables.2/@keys.1" columns="//@tables.6/@columns.1"/>
+    <foreignKeys name="FKChoferrealizo" refersTo="//@tables.2/@keys.1" columns="//@tables.6/@columns.0"/>
+    <foreignKeys name="FKHojaDeRutarealizo" refersTo="//@tables.3/@keys.0" columns="//@tables.6/@columns.1"/>
+  </tables>
+  <tables name="telefonosCliente">
+    <columns name="telefonos" type="VARCHAR(100)" keys="//@tables.7/@keys.0"/>
+    <columns name="dniClientetelefonos" type="VARCHAR(100)" foreignKeys="//@tables.7/@foreignKeys.0" keys="//@tables.7/@keys.0"/>
+    <keys name="PKtelefonos" columns="//@tables.7/@columns.0 //@tables.7/@columns.1" isPrimaryKey="true"/>
+    <foreignKeys name="FkCliente" refersTo="//@tables.1/@keys.2" columns="//@tables.7/@columns.1"/>
   </tables>
 </simplerdbms:Schema>

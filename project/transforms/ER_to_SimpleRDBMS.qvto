@@ -9,7 +9,9 @@ main(){
 
 mapping ER::ERDiagram::erDiagram2Schema() : RDB::Schema {
 	name := self.name;
-	tables := self.relatableelements[ER::Entity]->select(e | e.mustBeTabulated())-> map entities2Tables()->union(self.relatableelements[ER::Relation]->select(r | r.isNToN()) -> map nToNRelations2Tables());
+	tables := self.relatableelements[ER::Entity]->select(e | e.mustBeTabulated())-> map entities2Tables()
+	->union(self.relatableelements[ER::Relation]->select(r | r.isNToN()) -> map nToNRelations2Tables())
+	->union(self.relatableelements[ER::Entity]->collect(e | e.getMultivaluedAttrs()-> map multivaluedAttrs2Tables(e)));
 }
 
 mapping ER::Entity::entities2Tables() : RDB::Table { 
@@ -86,10 +88,29 @@ mapping ER::Relation::nToNRelations2Tables() : RDB::Table {
 	endif; 
 }
 
-//mapping Set(ER::PrimaryKey)::nToNrelationOppositePK2ForeignKeys(in ntnRel : ER::RelatableElement) : ER::PrimaryKey {
-//	name := 'PK'+ntnRel.name;
-//	key_attributes := self->collect(pk | pk.key_attributes);	
-//}
+mapping ER::Attribute::multivaluedAttrs2Tables(in ownerEnt : ER::Entity) : RDB::Table {
+	name := self.name+ownerEnt.name;
+	columns := self. map attrs2Columns()->union(ownerEnt.getPK().key_attributes-> map pkAttrs2Columns(self,ownerEnt));
+	keys := ownerEnt.getPK().key_attributes->asSet()-> map mulAttrTable2Key(self,ownerEnt);
+	foreignKeys := ownerEnt.getPK(). map getMulAttrTableFK(self,ownerEnt);	
+}
+
+mapping Set(ER::Attribute)::mulAttrTable2Key(in mulAttr : ER::Attribute, in callerEnt : ER::Entity) : RDB::Key {
+	name := 'PK'+mulAttr.name;
+	columns := mulAttr. map attrs2Columns()->union(callerEnt.getPK().key_attributes-> map pkAttrs2Columns(mulAttr,callerEnt));
+	isPrimaryKey := true;
+}
+
+mapping ER::PrimaryKey::getMulAttrTableFK(in mulAttr : ER::Attribute, in callerEnt : ER::Entity) : RDB::ForeignKey {
+	name := 'Fk'+callerEnt.name;
+	columns := self.key_attributes-> map pkAttrs2Columns(mulAttr,callerEnt);
+	refersTo := self.oclAsType(ER::Key). map keys2TableKeys(callerEnt);
+}
+
+mapping ER::Attribute::pkAttrs2Columns(in mulAttr : ER::Attribute, in callerEnt : ER::Entity) : RDB::Column {
+	name := self.name+callerEnt.name+mulAttr.name;	
+	type := self.getSqlType();
+}
 
 mapping Set(ER::PrimaryKey)::nToNrelationOppositePK2ForeignKeys(in callerEntity : ER::RelatableElement ,in relOpposite : ER::RelatableElement) : RDB::ForeignKey {
 	name := 'FK'+relOpposite.getTopTabulatedElement().name+callerEntity.name;
@@ -344,4 +365,8 @@ query ER::RelatableElement::isRelationAndNToN() : Boolean {
 	}
 	endif;
 	return self.oclAsType(ER::Relation).isNToN();	
+}
+
+query ER::Entity::getMultivaluedAttrs() : Set(ER::Attribute) {
+	return self.attributes->select(isMultiValued);
 }
