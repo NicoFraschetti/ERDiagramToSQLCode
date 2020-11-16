@@ -102,7 +102,7 @@ mapping Set(ER::Attribute)::mulAttrTable2Key(in mulAttr : ER::Attribute, in call
 }
 
 mapping ER::PrimaryKey::getMulAttrTableFK(in mulAttr : ER::Attribute, in callerEnt : ER::Entity) : RDB::ForeignKey {
-	name := 'Fk'+callerEnt.name;
+	name := 'Fk'+callerEnt.name+mulAttr.name;
 	columns := self.key_attributes-> map pkAttrs2Columns(mulAttr,callerEnt);
 	refersTo := self.oclAsType(ER::Key). map keys2TableKeys(callerEnt);
 }
@@ -181,7 +181,7 @@ mapping ER::Relation::getRelationTableKey() : RDB::Key {
 }
 
 mapping ER::PrimaryKey::addPKForeignKeys(in callerEntity : ER::Entity) : RDB::ForeignKey {
-	name := 'FK'+self.key_owner.name;
+	name := 'FK'+self.key_owner.name+callerEntity.name;
 	columns := callerEntity.getPK().key_attributes -> map inheritedAttrs2Columns(callerEntity);
 	refersTo := self.oclAsType(ER::Key).map keys2TableKeys(self.key_owner);
 }
@@ -196,7 +196,7 @@ query ER::Attribute::getSqlType() : String {
 		}
 		else{
 			if (self.type = ER::Type::Real) then {
-				return 'REAL';	
+				return 'DOUBLE';	
 			}
 			else{
 				return 'DATETIME';
@@ -218,7 +218,9 @@ query ER::Entity::getParent() : ER::Entity {
 }
 
 query ER::Entity::mustBeTabulated() : Boolean {
-	return (not self.hasChilds())  or (self.hasChilds() and (self.allowOverlappingChilds or (self.sourceOpposite->size() > 0 or self.destOpposite->size() > 0)));
+	return not self.hasChilds() 
+	or self.allowOverlappingChilds or (self.sourceOpposite->size() > 0 or self.destOpposite->size() > 0)
+	or self.getMultivaluedAttrs()->size() > 0;
 }
 
 query ER::Entity::hasParent() : Boolean {

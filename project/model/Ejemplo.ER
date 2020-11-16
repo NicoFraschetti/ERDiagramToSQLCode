@@ -5,12 +5,12 @@
     <attributes name="nombre"/>
     <attributes name="apellido"/>
     <attributes name="direccion"/>
+    <attributes name="telefonos" isMultiValued="true"/>
     <primarykey name="PKPersona" key_attributes="//@relatableelements.0/@attributes.0" key_owner="//@relatableelements.0"/>
   </relatableelements>
   <relatableelements xsi:type="ERModel:Entity" name="Cliente" sourceOpposite="//@relatableelements.8" parents="//@relatableelements.0">
     <attributes name="nro_cliente" type="Integer"/>
     <attributes name="cuit" type="Integer"/>
-    <attributes name="telefonos" isMultiValued="true"/>
     <keys name="SKCliente" key_attributes="//@relatableelements.1/@attributes.0" key_owner="//@relatableelements.1"/>
     <keys name="OtraClaveCliente" key_attributes="//@relatableelements.1/@attributes.1" key_owner="//@relatableelements.1"/>
   </relatableelements>
