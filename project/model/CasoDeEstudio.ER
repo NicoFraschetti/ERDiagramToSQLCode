@@ -5,12 +5,12 @@
     <attributes name="nombre"/>
     <attributes name="apellido"/>
     <attributes name="direccion"/>
-    <attributes name="telefonos" isMultiValued="true"/>
     <primarykey name="PKPersona" key_attributes="//@relatableelements.0/@attributes.0" key_owner="//@relatableelements.0"/>
   </relatableelements>
-  <relatableelements xsi:type="ERModel:Entity" name="Cliente" sourceOpposite="//@relatableelements.8" parents="//@relatableelements.0">
+  <relatableelements xsi:type="ERModel:Entity" name="Cliente" sourceOpposite="//@relatableelements.8" destOpposite="//@relatableelements.12 //@relatableelements.13" parents="//@relatableelements.0">
     <attributes name="nro_cliente" type="Integer"/>
     <attributes name="cuit" type="Integer"/>
+    <attributes name="telefonos" isMultiValued="true"/>
     <keys name="SKCliente" key_attributes="//@relatableelements.1/@attributes.0" key_owner="//@relatableelements.1"/>
     <keys name="OtraClaveCliente" key_attributes="//@relatableelements.1/@attributes.1" key_owner="//@relatableelements.1"/>
   </relatableelements>
@@ -20,7 +20,7 @@
     <keys name="SKChofer" key_attributes="//@relatableelements.2/@attributes.0" key_owner="//@relatableelements.2"/>
   </relatableelements>
   <relatableelements xsi:type="ERModel:Entity" name="HojaDeRuta" destOpposite="//@relatableelements.5">
-    <attributes name="nro" type="Integer"/>
+    <attributes name="nro_hoja" type="Integer"/>
     <attributes name="monto_caja" type="Real"/>
     <attributes name="monto_cobrado" type="Real"/>
     <attributes name="monto_total" type="Real"/>
@@ -28,17 +28,32 @@
     <primarykey name="PKHojaDeRuta" key_attributes="//@relatableelements.3/@attributes.0" key_owner="//@relatableelements.3"/>
   </relatableelements>
   <relatableelements xsi:type="ERModel:Entity" name="Gasto" destOpposite="//@relatableelements.6">
-    <attributes name="codigo" type="Integer"/>
+    <attributes name="codigo_gasto" type="Integer"/>
     <attributes name="descripcion"/>
     <primarykey name="PKGasto" key_attributes="//@relatableelements.4/@attributes.0" key_owner="//@relatableelements.4"/>
   </relatableelements>
   <relatableelements xsi:type="ERModel:Relation" name="realizo" sourceOpposite="//@relatableelements.6" source="//@relatableelements.2" destination="//@relatableelements.3" srcUpperBound="N" destUpperBound="N"/>
-  <relatableelements xsi:type="ERModel:Relation" name="gastosxchoferxhoja" source="//@relatableelements.5" destination="//@relatableelements.4" destUpperBound="N"/>
-  <relatableelements xsi:type="ERModel:Entity" name="Factura" destOpposite="//@relatableelements.8">
+  <relatableelements xsi:type="ERModel:Relation" name="gastosxchoferxhoja" source="//@relatableelements.5" destination="//@relatableelements.4" srcUpperBound="N" destUpperBound="N"/>
+  <relatableelements xsi:type="ERModel:Entity" name="Factura" sourceOpposite="//@relatableelements.11" destOpposite="//@relatableelements.8">
     <attributes name="nro_factura" type="Integer"/>
     <attributes name="fecha" type="DateTime"/>
     <attributes name="monto" type="Real"/>
     <primarykey name="PKFactura" key_attributes="//@relatableelements.7/@attributes.0" key_owner="//@relatableelements.7"/>
   </relatableelements>
   <relatableelements xsi:type="ERModel:Relation" name="pagos" source="//@relatableelements.1" destination="//@relatableelements.7" destUpperBound="N"/>
+  <relatableelements xsi:type="ERModel:Entity" name="Remito" sourceOpposite="//@relatableelements.12 //@relatableelements.13 //@relatableelements.14" destOpposite="//@relatableelements.11">
+    <attributes name="nro_remito" type="Integer"/>
+    <primarykey name="PKRemito" key_attributes="//@relatableelements.9/@attributes.0" key_owner="//@relatableelements.9"/>
+  </relatableelements>
+  <relatableelements xsi:type="ERModel:Entity" name="TipoEncomienda" destOpposite="//@relatableelements.14">
+    <attributes name="cod_tipo_encomienda" type="Integer"/>
+    <attributes name="nombre_encomienda"/>
+    <primarykey name="PKTipoEncomienda" key_attributes="//@relatableelements.10/@attributes.0"/>
+  </relatableelements>
+  <relatableelements xsi:type="ERModel:Relation" name="facturados" source="//@relatableelements.7" destination="//@relatableelements.9" destUpperBound="N"/>
+  <relatableelements xsi:type="ERModel:Relation" name="origen" source="//@relatableelements.9" destination="//@relatableelements.1" srcUpperBound="N"/>
+  <relatableelements xsi:type="ERModel:Relation" name="destino" source="//@relatableelements.9" destination="//@relatableelements.1" srcUpperBound="N"/>
+  <relatableelements xsi:type="ERModel:Relation" name="encomiendas" source="//@relatableelements.9" destination="//@relatableelements.10" srcUpperBound="N" destUpperBound="N">
+    <attributes name="cantidad" type="Integer"/>
+  </relatableelements>
 </ERModel:ERDiagram>
